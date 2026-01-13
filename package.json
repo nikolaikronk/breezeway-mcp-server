@@ -1,0 +1,31 @@
+{
+  "name": "breezeway-mcp-server",
+  "version": "1.0.0",
+  "description": "MCP server for connecting Breezeway property management data to ChatGPT Company Knowledge",
+  "type": "module",
+  "main": "dist/http-server.js",
+  "scripts": {
+    "build": "tsc",
+    "dev": "tsc && node dist/http-server.js",
+    "start": "node dist/http-server.js",
+    "start:stdio": "node dist/server.js",
+    "test": "npx @modelcontextprotocol/inspector node dist/server.js",
+    "watch": "tsc --watch"
+  },
+  "keywords": [
+    "mcp",
+    "breezeway",
+    "chatgpt",
+    "property-management"
+  ],
+  "dependencies": {
+    "@modelcontextprotocol/sdk": "^1.0.0",
+    "zod": "^3.23.8",
+    "node-fetch": "^3.3.2",
+    "dotenv": "^16.3.1"
+  },
+  "devDependencies": {
+    "@types/node": "^20.10.0",
+    "typescript": "^5.3.3"
+  }
+}
