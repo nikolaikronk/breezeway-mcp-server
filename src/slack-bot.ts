@@ -1,6 +1,7 @@
 #!/usr/bin/env node
 
-import { App, ExpressReceiver } from '@slack/bolt';
+import pkg from '@slack/bolt';
+const { App, ExpressReceiver } = pkg;
 import { config } from 'dotenv';
 import { BreezewayClient } from './breezeway-client.js';
 
