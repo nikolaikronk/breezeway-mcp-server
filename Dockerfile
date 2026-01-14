@@ -23,5 +23,5 @@ RUN npm prune --production
 # Expose port (Railway will set PORT env var)
 EXPOSE 3000
 
-# Start the server
-CMD ["node", "dist/http-server.js"]
+# Start the Slack bot server
+CMD ["node", "dist/slack-bot.js"]

@@ -6,8 +6,9 @@
   "main": "dist/http-server.js",
   "scripts": {
     "build": "tsc",
-    "dev": "tsc && node dist/http-server.js",
-    "start": "node dist/http-server.js",
+    "dev": "tsc && node dist/slack-bot.js",
+    "start": "node dist/slack-bot.js",
+    "start:http": "node dist/http-server.js",
     "start:stdio": "node dist/server.js",
     "test": "npx @modelcontextprotocol/inspector node dist/server.js",
     "watch": "tsc --watch"
@@ -20,6 +21,7 @@
   ],
   "dependencies": {
     "@modelcontextprotocol/sdk": "^1.0.0",
+    "@slack/bolt": "^3.17.1",
     "zod": "^3.23.8",
     "node-fetch": "^3.3.2",
     "dotenv": "^16.3.1"
