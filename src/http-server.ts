@@ -97,11 +97,17 @@ const httpServer = http.createServer(async (req, res) => {
     res.end(JSON.stringify({
       service: 'breezeway-mcp-server',
       version: '1.0.0',
+      description: 'Breezeway property management API',
       endpoints: {
-        health: '/health',
-        mcp: '/mcp (POST)'
-      },
-      description: 'MCP server for Breezeway property management'
+        health: 'GET /health',
+        properties: 'GET /api/properties',
+        search: 'GET /api/properties/search?q=query',
+        propertyById: 'GET /api/properties/:id',
+        propertyByInternalId: 'GET /api/properties/internal/:id',
+        tasks: 'GET /api/tasks?property_id=&status=',
+        reservations: 'GET /api/reservations?property_id=&start_date=&end_date=',
+        mcp: 'POST /mcp'
+      }
     }));
     return;
   }
@@ -110,6 +116,125 @@ const httpServer = http.createServer(async (req, res) => {
   if (req.url === '/health' && req.method === 'GET') {
     res.writeHead(200, { 'Content-Type': 'application/json' });
     res.end(JSON.stringify({ status: 'ok', service: 'breezeway-mcp-server' }));
+    return;
+  }
+
+  // REST API ENDPOINTS
+
+  // GET /api/properties - List all properties
+  if (req.url === '/api/properties' && req.method === 'GET') {
+    try {
+      const properties = await breezewayClient.getProperties();
+      res.writeHead(200, { 'Content-Type': 'application/json' });
+      res.end(JSON.stringify({ success: true, count: properties.length, data: properties }));
+    } catch (error: any) {
+      res.writeHead(500, { 'Content-Type': 'application/json' });
+      res.end(JSON.stringify({ success: false, error: error.message }));
+    }
+    return;
+  }
+
+  // GET /api/properties/search?q=query - Search properties
+  if (req.url?.startsWith('/api/properties/search') && req.method === 'GET') {
+    try {
+      const urlObj = new URL(req.url, `http://${req.headers.host}`);
+      const query = urlObj.searchParams.get('q') || '';
+
+      if (!query) {
+        res.writeHead(400, { 'Content-Type': 'application/json' });
+        res.end(JSON.stringify({ success: false, error: 'Missing query parameter: q' }));
+        return;
+      }
+
+      const results = await breezewayClient.search(query, ['properties']);
+      res.writeHead(200, { 'Content-Type': 'application/json' });
+      res.end(JSON.stringify({ success: true, query, count: results.length, data: results }));
+    } catch (error: any) {
+      res.writeHead(500, { 'Content-Type': 'application/json' });
+      res.end(JSON.stringify({ success: false, error: error.message }));
+    }
+    return;
+  }
+
+  // GET /api/properties/internal/:id - Get property by internal ID (Streamline ID)
+  if (req.url?.startsWith('/api/properties/internal/') && req.method === 'GET') {
+    try {
+      const internalId = req.url.split('/api/properties/internal/')[1];
+      const properties = await breezewayClient.getProperties();
+      const property = properties.find(p => p.reference_property_id === internalId);
+
+      if (!property) {
+        res.writeHead(404, { 'Content-Type': 'application/json' });
+        res.end(JSON.stringify({ success: false, error: `Property with internal ID ${internalId} not found` }));
+        return;
+      }
+
+      // Get full details
+      const fullProperty = await breezewayClient.fetch('property', property.id);
+      res.writeHead(200, { 'Content-Type': 'application/json' });
+      res.end(JSON.stringify({ success: true, data: fullProperty }));
+    } catch (error: any) {
+      res.writeHead(500, { 'Content-Type': 'application/json' });
+      res.end(JSON.stringify({ success: false, error: error.message }));
+    }
+    return;
+  }
+
+  // GET /api/properties/:id - Get property by Breezeway ID
+  if (req.url?.startsWith('/api/properties/') && req.method === 'GET' && !req.url.includes('search') && !req.url.includes('internal')) {
+    try {
+      const propertyId = req.url.split('/api/properties/')[1];
+      const property = await breezewayClient.fetch('property', propertyId);
+      res.writeHead(200, { 'Content-Type': 'application/json' });
+      res.end(JSON.stringify({ success: true, data: property }));
+    } catch (error: any) {
+      res.writeHead(404, { 'Content-Type': 'application/json' });
+      res.end(JSON.stringify({ success: false, error: error.message }));
+    }
+    return;
+  }
+
+  // GET /api/tasks - List tasks
+  if (req.url?.startsWith('/api/tasks') && req.method === 'GET') {
+    try {
+      const urlObj = new URL(req.url, `http://${req.headers.host}`);
+      const propertyId = urlObj.searchParams.get('property_id');
+      const status = urlObj.searchParams.get('status');
+
+      const params: any = {};
+      if (propertyId) params.property_id = propertyId;
+      if (status) params.status = status;
+
+      const tasks = await breezewayClient.getTasks(params);
+      res.writeHead(200, { 'Content-Type': 'application/json' });
+      res.end(JSON.stringify({ success: true, count: tasks.length, data: tasks }));
+    } catch (error: any) {
+      res.writeHead(500, { 'Content-Type': 'application/json' });
+      res.end(JSON.stringify({ success: false, error: error.message }));
+    }
+    return;
+  }
+
+  // GET /api/reservations - List reservations
+  if (req.url?.startsWith('/api/reservations') && req.method === 'GET') {
+    try {
+      const urlObj = new URL(req.url, `http://${req.headers.host}`);
+      const propertyId = urlObj.searchParams.get('property_id');
+      const startDate = urlObj.searchParams.get('start_date');
+      const endDate = urlObj.searchParams.get('end_date');
+
+      const params: any = {};
+      if (propertyId) params.property_id = propertyId;
+      if (startDate) params.start_date = startDate;
+      if (endDate) params.end_date = endDate;
+
+      const reservations = await breezewayClient.getReservations(params);
+      res.writeHead(200, { 'Content-Type': 'application/json' });
+      res.end(JSON.stringify({ success: true, count: reservations.length, data: reservations }));
+    } catch (error: any) {
+      res.writeHead(500, { 'Content-Type': 'application/json' });
+      res.end(JSON.stringify({ success: false, error: error.message }));
+    }
     return;
   }
 
