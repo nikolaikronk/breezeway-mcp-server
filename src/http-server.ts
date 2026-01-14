@@ -100,14 +100,15 @@ const httpServer = http.createServer(async (req, res) => {
       description: 'Breezeway property management API',
       endpoints: {
         health: 'GET /health',
-        properties: 'GET /api/properties',
-        search: 'GET /api/properties/search?q=query',
+        properties: 'GET /api/properties?limit=20',
+        search: 'GET /api/properties/search?q=query&limit=20',
         propertyById: 'GET /api/properties/:id',
         propertyByInternalId: 'GET /api/properties/internal/:id',
-        tasks: 'GET /api/tasks?property_id=&status=',
-        reservations: 'GET /api/reservations?property_id=&start_date=&end_date=',
+        tasks: 'GET /api/tasks?property_id=&status=&limit=20',
+        reservations: 'GET /api/reservations?property_id=&start_date=&end_date=&limit=20',
         mcp: 'POST /mcp'
-      }
+      },
+      notes: 'All list endpoints default to 20 results. Use ?limit=N to change (max 100).'
     }));
     return;
   }
@@ -122,11 +123,22 @@ const httpServer = http.createServer(async (req, res) => {
   // REST API ENDPOINTS
 
   // GET /api/properties - List all properties
-  if (req.url === '/api/properties' && req.method === 'GET') {
+  if (req.url?.startsWith('/api/properties') && req.method === 'GET' && !req.url.includes('search') && !req.url.includes('internal') && req.url.split('/').length === 3) {
     try {
+      const urlObj = new URL(req.url, `http://${req.headers.host}`);
+      const limitParam = urlObj.searchParams.get('limit');
+      const limit = limitParam ? parseInt(limitParam, 10) : 20; // Default to 20 properties
+
       const properties = await breezewayClient.getProperties();
+      const limitedProperties = properties.slice(0, limit);
+
       res.writeHead(200, { 'Content-Type': 'application/json' });
-      res.end(JSON.stringify({ success: true, count: properties.length, data: properties }));
+      res.end(JSON.stringify({
+        success: true,
+        count: limitedProperties.length,
+        total: properties.length,
+        data: limitedProperties
+      }));
     } catch (error: any) {
       res.writeHead(500, { 'Content-Type': 'application/json' });
       res.end(JSON.stringify({ success: false, error: error.message }));
@@ -139,6 +151,8 @@ const httpServer = http.createServer(async (req, res) => {
     try {
       const urlObj = new URL(req.url, `http://${req.headers.host}`);
       const query = urlObj.searchParams.get('q') || '';
+      const limitParam = urlObj.searchParams.get('limit');
+      const limit = limitParam ? parseInt(limitParam, 10) : 20; // Default to 20 results
 
       if (!query) {
         res.writeHead(400, { 'Content-Type': 'application/json' });
@@ -147,8 +161,16 @@ const httpServer = http.createServer(async (req, res) => {
       }
 
       const results = await breezewayClient.search(query, ['properties']);
+      const limitedResults = results.slice(0, limit);
+
       res.writeHead(200, { 'Content-Type': 'application/json' });
-      res.end(JSON.stringify({ success: true, query, count: results.length, data: results }));
+      res.end(JSON.stringify({
+        success: true,
+        query,
+        count: limitedResults.length,
+        total: results.length,
+        data: limitedResults
+      }));
     } catch (error: any) {
       res.writeHead(500, { 'Content-Type': 'application/json' });
       res.end(JSON.stringify({ success: false, error: error.message }));
@@ -200,14 +222,23 @@ const httpServer = http.createServer(async (req, res) => {
       const urlObj = new URL(req.url, `http://${req.headers.host}`);
       const propertyId = urlObj.searchParams.get('property_id');
       const status = urlObj.searchParams.get('status');
+      const limitParam = urlObj.searchParams.get('limit');
+      const limit = limitParam ? parseInt(limitParam, 10) : 20; // Default to 20 tasks
 
       const params: any = {};
       if (propertyId) params.property_id = propertyId;
       if (status) params.status = status;
 
       const tasks = await breezewayClient.getTasks(params);
+      const limitedTasks = tasks.slice(0, limit);
+
       res.writeHead(200, { 'Content-Type': 'application/json' });
-      res.end(JSON.stringify({ success: true, count: tasks.length, data: tasks }));
+      res.end(JSON.stringify({
+        success: true,
+        count: limitedTasks.length,
+        total: tasks.length,
+        data: limitedTasks
+      }));
     } catch (error: any) {
       res.writeHead(500, { 'Content-Type': 'application/json' });
       res.end(JSON.stringify({ success: false, error: error.message }));
@@ -222,6 +253,8 @@ const httpServer = http.createServer(async (req, res) => {
       const propertyId = urlObj.searchParams.get('property_id');
       const startDate = urlObj.searchParams.get('start_date');
       const endDate = urlObj.searchParams.get('end_date');
+      const limitParam = urlObj.searchParams.get('limit');
+      const limit = limitParam ? parseInt(limitParam, 10) : 20; // Default to 20 reservations
 
       const params: any = {};
       if (propertyId) params.property_id = propertyId;
@@ -229,8 +262,15 @@ const httpServer = http.createServer(async (req, res) => {
       if (endDate) params.end_date = endDate;
 
       const reservations = await breezewayClient.getReservations(params);
+      const limitedReservations = reservations.slice(0, limit);
+
       res.writeHead(200, { 'Content-Type': 'application/json' });
-      res.end(JSON.stringify({ success: true, count: reservations.length, data: reservations }));
+      res.end(JSON.stringify({
+        success: true,
+        count: limitedReservations.length,
+        total: reservations.length,
+        data: limitedReservations
+      }));
     } catch (error: any) {
       res.writeHead(500, { 'Content-Type': 'application/json' });
       res.end(JSON.stringify({ success: false, error: error.message }));
