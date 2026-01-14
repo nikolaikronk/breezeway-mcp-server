@@ -13,7 +13,7 @@ npm run build
 
 1. Open: `%APPDATA%\Claude\claude_desktop_config.json` in Notepad
 
-2. Paste this (replace with your actual credentials):
+2. Paste this (replace placeholders with credentials from your `.env` file):
 
 ```json
 {
@@ -24,13 +24,15 @@ npm run build
         "C:\\Users\\nikol\\breezeway-mcp-server\\dist\\server.js"
       ],
       "env": {
-        "BREEZEWAY_API_KEY": "3wuzmtes5r8ifybej3ts4e63h5lkyicz",
-        "BREEZEWAY_API_SECRET": "hszznn5cvw58xy3679b6ppc1zoa00vu7"
+        "BREEZEWAY_API_KEY": "YOUR_API_KEY_HERE",
+        "BREEZEWAY_API_SECRET": "YOUR_API_SECRET_HERE"
       }
     }
   }
 }
 ```
+
+> **Note:** Get your actual `BREEZEWAY_API_KEY` and `BREEZEWAY_API_SECRET` values from the `.env` file in your `breezeway-mcp-server` directory.
 
 3. Save the file
 
