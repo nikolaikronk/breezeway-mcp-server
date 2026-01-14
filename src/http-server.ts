@@ -91,6 +91,21 @@ const fetchTool: Tool = {
 
 // Create HTTP server
 const httpServer = http.createServer(async (req, res) => {
+  // Root endpoint - API info
+  if (req.url === '/' && req.method === 'GET') {
+    res.writeHead(200, { 'Content-Type': 'application/json' });
+    res.end(JSON.stringify({
+      service: 'breezeway-mcp-server',
+      version: '1.0.0',
+      endpoints: {
+        health: '/health',
+        mcp: '/mcp (POST)'
+      },
+      description: 'MCP server for Breezeway property management'
+    }));
+    return;
+  }
+
   // Health check endpoint
   if (req.url === '/health' && req.method === 'GET') {
     res.writeHead(200, { 'Content-Type': 'application/json' });
