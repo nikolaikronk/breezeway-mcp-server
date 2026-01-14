@@ -1,0 +1,385 @@
+openapi: 3.1.0
+info:
+  title: Breezeway MCP Server API
+  version: 1.0.0
+  description: Access JZ Vacation Rentals property data from Breezeway - properties, tasks, and reservations
+
+servers:
+  - url: https://breezeway-mcp-server-production.up.railway.app
+    description: Production server
+
+paths:
+  /health:
+    get:
+      summary: Health check endpoint
+      description: Check if the service is running
+      operationId: healthCheck
+      responses:
+        '200':
+          description: Service is healthy
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  status:
+                    type: string
+                    example: ok
+                  service:
+                    type: string
+                    example: breezeway-mcp-server
+
+  /api/properties:
+    get:
+      summary: List all properties
+      description: Get a list of all Breezeway properties managed by JZ Vacation Rentals
+      operationId: listProperties
+      responses:
+        '200':
+          description: Successfully retrieved properties
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success:
+                    type: boolean
+                  count:
+                    type: integer
+                    description: Total number of properties
+                  data:
+                    type: array
+                    items:
+                      $ref: '#/components/schemas/Property'
+        '500':
+          description: Server error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+
+  /api/properties/search:
+    get:
+      summary: Search properties
+      description: Search for properties by name, address, or other attributes
+      operationId: searchProperties
+      parameters:
+        - name: q
+          in: query
+          required: true
+          description: Search query string (e.g., "Espadin", "LoHi", "Manchester")
+          schema:
+            type: string
+          example: Espadin
+      responses:
+        '200':
+          description: Search results
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success:
+                    type: boolean
+                  query:
+                    type: string
+                    description: The search query used
+                  count:
+                    type: integer
+                    description: Number of results found
+                  data:
+                    type: array
+                    items:
+                      $ref: '#/components/schemas/Property'
+        '400':
+          description: Missing query parameter
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '500':
+          description: Server error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+
+  /api/properties/internal/{id}:
+    get:
+      summary: Get property by Streamline internal ID
+      description: Retrieve property details using the Streamline (internal) property ID
+      operationId: getPropertyByInternalId
+      parameters:
+        - name: id
+          in: path
+          required: true
+          description: Streamline internal property ID (reference_property_id)
+          schema:
+            type: string
+          example: "442653"
+      responses:
+        '200':
+          description: Property found
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success:
+                    type: boolean
+                  data:
+                    $ref: '#/components/schemas/PropertyDetail'
+        '404':
+          description: Property not found
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '500':
+          description: Server error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+
+  /api/properties/{id}:
+    get:
+      summary: Get property by Breezeway ID
+      description: Retrieve detailed property information using the Breezeway property ID
+      operationId: getPropertyById
+      parameters:
+        - name: id
+          in: path
+          required: true
+          description: Breezeway property ID
+          schema:
+            type: string
+          example: "737329"
+      responses:
+        '200':
+          description: Property found
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success:
+                    type: boolean
+                  data:
+                    $ref: '#/components/schemas/PropertyDetail'
+        '404':
+          description: Property not found
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '500':
+          description: Server error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+
+  /api/tasks:
+    get:
+      summary: List tasks
+      description: Get a list of tasks, optionally filtered by property or status
+      operationId: listTasks
+      parameters:
+        - name: property_id
+          in: query
+          required: false
+          description: Filter tasks by Breezeway property ID
+          schema:
+            type: string
+          example: "737329"
+        - name: status
+          in: query
+          required: false
+          description: Filter tasks by status (e.g., "pending", "completed", "overdue")
+          schema:
+            type: string
+          example: pending
+      responses:
+        '200':
+          description: Successfully retrieved tasks
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success:
+                    type: boolean
+                  count:
+                    type: integer
+                    description: Number of tasks returned
+                  data:
+                    type: array
+                    items:
+                      $ref: '#/components/schemas/Task'
+        '500':
+          description: Server error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+
+  /api/reservations:
+    get:
+      summary: List reservations
+      description: Get a list of reservations, optionally filtered by property or date range
+      operationId: listReservations
+      parameters:
+        - name: property_id
+          in: query
+          required: false
+          description: Filter reservations by Breezeway property ID
+          schema:
+            type: string
+          example: "737329"
+        - name: start_date
+          in: query
+          required: false
+          description: Filter reservations starting on or after this date (YYYY-MM-DD)
+          schema:
+            type: string
+            format: date
+          example: "2026-01-14"
+        - name: end_date
+          in: query
+          required: false
+          description: Filter reservations ending on or before this date (YYYY-MM-DD)
+          schema:
+            type: string
+            format: date
+          example: "2026-01-21"
+      responses:
+        '200':
+          description: Successfully retrieved reservations
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success:
+                    type: boolean
+                  count:
+                    type: integer
+                    description: Number of reservations returned
+                  data:
+                    type: array
+                    items:
+                      $ref: '#/components/schemas/Reservation'
+        '500':
+          description: Server error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+
+components:
+  schemas:
+    Property:
+      type: object
+      description: Basic property information
+      properties:
+        id:
+          type: string
+          description: Breezeway property ID
+        name:
+          type: string
+          description: Property name
+        address:
+          type: string
+          description: Full property address
+        reference_property_id:
+          type: string
+          description: Internal/Streamline property ID
+
+    PropertyDetail:
+      type: object
+      description: Detailed property information
+      properties:
+        id:
+          type: string
+          description: Breezeway property ID
+        name:
+          type: string
+          description: Property name
+        address:
+          type: string
+          description: Full property address
+        reference_property_id:
+          type: string
+          description: Internal/Streamline property ID
+        wifi_network:
+          type: string
+          description: WiFi network name
+        wifi_password:
+          type: string
+          description: WiFi password
+        description:
+          type: string
+          description: Property description
+        photos:
+          type: array
+          items:
+            type: object
+            properties:
+              url:
+                type: string
+              caption:
+                type: string
+
+    Task:
+      type: object
+      description: Task information
+      properties:
+        id:
+          type: string
+          description: Task ID
+        title:
+          type: string
+          description: Task title
+        status:
+          type: string
+          description: Task status
+        property_id:
+          type: string
+          description: Associated property ID
+        due_date:
+          type: string
+          format: date-time
+          description: Task due date
+
+    Reservation:
+      type: object
+      description: Reservation information
+      properties:
+        id:
+          type: string
+          description: Reservation ID
+        property_id:
+          type: string
+          description: Associated property ID
+        check_in:
+          type: string
+          format: date
+          description: Check-in date
+        check_out:
+          type: string
+          format: date
+          description: Check-out date
+        guest_name:
+          type: string
+          description: Guest name
+
+    Error:
+      type: object
+      properties:
+        success:
+          type: boolean
+          example: false
+        error:
+          type: string
+          description: Error message
