@@ -11,10 +11,14 @@ const SLACK_BOT_TOKEN = process.env.SLACK_BOT_TOKEN;
 const SLACK_SIGNING_SECRET = process.env.SLACK_SIGNING_SECRET;
 const BREEZEWAY_API_KEY = process.env.BREEZEWAY_API_KEY;
 const BREEZEWAY_API_SECRET = process.env.BREEZEWAY_API_SECRET;
+const PORT = process.env.PORT || 3000;
 
-if (!SLACK_BOT_TOKEN || !SLACK_SIGNING_SECRET) {
-  console.error('Error: SLACK_BOT_TOKEN and SLACK_SIGNING_SECRET must be set');
-  process.exit(1);
+// Check if Slack credentials are set
+const slackConfigured = SLACK_BOT_TOKEN && SLACK_SIGNING_SECRET;
+
+if (!slackConfigured) {
+  console.warn('⚠️  SLACK_BOT_TOKEN and SLACK_SIGNING_SECRET not set - Slack bot will not be initialized');
+  console.warn('⚠️  Running in health-check-only mode');
 }
 
 if (!BREEZEWAY_API_KEY || !BREEZEWAY_API_SECRET) {
@@ -30,12 +34,24 @@ const breezewayClient = new BreezewayClient({
 
 // Create Express receiver for custom routes
 const receiver = new ExpressReceiver({
-  signingSecret: SLACK_SIGNING_SECRET,
+  signingSecret: SLACK_SIGNING_SECRET || 'temp-secret-for-health-check',
+});
+
+// Add health check endpoint (works even without Slack credentials)
+receiver.router.get('/health', (req, res) => {
+  res.json({
+    status: 'ok',
+    service: 'breezeway-slack-bot',
+    slackConfigured: slackConfigured,
+    message: slackConfigured
+      ? 'Slack bot is configured and ready'
+      : 'Waiting for SLACK_BOT_TOKEN and SLACK_SIGNING_SECRET'
+  });
 });
 
 // Initialize Slack app
 const app = new App({
-  token: SLACK_BOT_TOKEN,
+  token: SLACK_BOT_TOKEN || 'temp-token',
   receiver,
 });
 
@@ -60,8 +76,9 @@ function formatProperty(property: any, detailed: boolean = false): string {
   return text;
 }
 
-// /breezeway command
-app.command('/breezeway', async ({ command, ack, respond }) => {
+// /breezeway command (only register if Slack is configured)
+if (slackConfigured) {
+  app.command('/breezeway', async ({ command, ack, respond }) => {
   await ack();
 
   try {
@@ -235,14 +252,19 @@ app.command('/breezeway', async ({ command, ack, respond }) => {
       response_type: 'ephemeral',
     });
   }
-});
+  });
+} else {
+  console.warn('⚠️  Slack command handler not registered - missing credentials');
+}
 
 // Start the app
-const PORT = process.env.PORT || 3000;
-
 (async () => {
   await app.start(PORT);
-  console.log(`⚡️ Breezeway Slack bot is running on port ${PORT}`);
+  if (slackConfigured) {
+    console.log(`⚡️ Breezeway Slack bot is running on port ${PORT}`);
+  } else {
+    console.log(`⚡️ Health check server running on port ${PORT} - waiting for Slack credentials`);
+  }
 })();
 
 export { app, receiver };
